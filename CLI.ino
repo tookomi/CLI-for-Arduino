@@ -1,18 +1,13 @@
 #include <EEPROM.h>
-#define success "operation successfull. "
-#define failed "operation failed. "
+#define success "Оperation successfull. "
+#define failed "Operation failed. "
 
 String command;
 int part;
 int position;
 char array[2]={0,0};
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
-}
-
-char conert_to_hex(char ){
-
 }
 
 void digit_to_chars(int value){
@@ -37,7 +32,6 @@ uint16_t getValue(byte* array, unsigned int com_length, uint8_t pos){
 
 uint16_t getAdress(byte* array, unsigned int com_length){
   int adress;
-  //14
   uint8_t below_digits=47, above_digits=58,zero=48;
   if (com_length>14 && ((array[14]>below_digits) && (array[14]<above_digits))){
     adress=(array[13]-zero)*10+(array[14]-zero);
@@ -90,11 +84,8 @@ void Report(bool function){
 }
 
 void loop() {
-   //put your main code here, to run repeatedly:
   if(Serial.available()){
       command=Serial.readString();
-      //EEPROM.write(111, 41);
-      //Serial.write(EEPROM.read(111));
       byte buffer[command.length()];
       command.getBytes(buffer, command.length());
       if ((command.startsWith("eeprom -")) && ((command.charAt(10)=='-' && command.charAt(11)=='a') || command.charAt(8)=='d')){
@@ -103,10 +94,6 @@ void loop() {
                 for (int i=13;!(command.charAt(i)=='-' && command.charAt(i+1)=='v' && command.charAt(i+2)==' ');i++)
                   position=i+4;
                 EEPROM.write(getAdress(buffer,command.length()), getValue(buffer,command.length(),position));
-
-                Serial.write(getValue(buffer,command.length(),position));
-                Serial.write(EEPROM.read(getAdress(buffer,command.length())));
-
                 if (EEPROM.read(getAdress(buffer,command.length()))==getValue(buffer,command.length(),position))
                   Serial.write(success);
                 else {
