@@ -4,6 +4,7 @@
 
 String command;
 int part;
+int position;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -35,23 +36,10 @@ char* digit_to_chars(int value){
   return (dec_to_hex(array));
 }
 
-uint8_t getValue(byte* array, unsigned int com_length){
-  uint8_t value=0;
-  for (int i=1;(array[com_length-i]>47) && (array[com_length-i]<58);i++)
-  value=value+(array[com_length-i]-48)*(10^(i-1));
-  /*if (array[16]=='-' && array[17]=='v'){
-    for (int i=19;i<(com_length+1);i++){
-      if ((array[i]>47) && (array[i]<58)){
-        value=value*(10^i)+(array[i]-48);
-      }
-      else{
-        Serial.write("invalid command ");
-        return 0;
-      }
-    }
-  }
-  else
-    Serial.write("invalid command ");*/
+uint16_t getValue(byte* array, unsigned int com_length, uint8_t pos){
+  uint16_t value=0;
+  for (int i=pos;((array[i]>47) && (array[i]<58));i++)
+    value=value*10+(array[i]-48);
   return value;
 }
 
@@ -106,18 +94,23 @@ void loop() {
       if ((command.startsWith("eeprom -")) && ((command.charAt(10)=='-' && command.charAt(11)=='a') || command.charAt(8)=='d')){
            switch(command.charAt(8)) {        
               case 'w':
-                  EEPROM.write(getAdress(buffer,command.length()), getValue(buffer,command.length()));
-                  Serial.write(getValue(buffer,command.length()));
-                  if (EEPROM.read(getAdress(buffer,command.length()))==getValue(buffer,command.length()))
-                    Serial.write(success);
-                  else {
-                      Serial.write(failed);
-                      Serial.write("EEPROM cell erased. ");
-                    }
+                for (int i=13;!(command.charAt(i)=='-' && command.charAt(i+1)=='v' && command.charAt(i+2)==' ');i++)
+                  position=i+4;
+                EEPROM.write(getAdress(buffer,command.length()), getValue(buffer,command.length(),position));
+
+                Serial.write(getValue(buffer,command.length(),position));
+                Serial.write(EEPROM.read(getAdress(buffer,command.length())));
+
+                if (EEPROM.read(getAdress(buffer,command.length()))==getValue(buffer,command.length(),position))
+                  Serial.write(success);
+                else {
+                    Serial.write(failed);
+                    Serial.write("EEPROM cell erased. ");
+                }
               break;
               case 'r':
                   part=EEPROM.read(getAdress(buffer,command.length()));
-                  for (int i=0; i<sizeof(digit_to_chars(part));i++)
+                  for (int i=0; i<2;i++)
                     Serial.write(digit_to_chars(part)[i]);
               break;
               case 'e':
