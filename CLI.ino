@@ -15,7 +15,7 @@ char conert_to_hex(char ){
 
 }
 
-char* digit_to_chars(int value){
+void digit_to_chars(int value){
   array[1]=value%16;
   array[0]=value/16;
   for (int k=0;k<2;k++){
@@ -25,8 +25,7 @@ char* digit_to_chars(int value){
         array[k]=array[k]+55;
       Serial.write(array[k]);
   }
-
-  return (array);
+  Serial.write(" ");
 }
 
 uint16_t getValue(byte* array, unsigned int com_length, uint8_t pos){
@@ -78,7 +77,6 @@ uint8_t EEPROM_dump(){
     Serial.write(" : ");
     for (int k=i;k<(i+8);k++){
     digit_to_chars(EEPROM.read(k));
-      Serial.write(" ");
     }
     Serial.write(0x0A);
   }
