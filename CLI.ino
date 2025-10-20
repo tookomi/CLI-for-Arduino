@@ -11,6 +11,9 @@ void setup() {
   Serial.begin(9600);
 }
 
+char conert_to_hex(char ){
+
+}
 
 char* digit_to_chars(int value){
   array[1]=value%16;
@@ -20,7 +23,9 @@ char* digit_to_chars(int value){
         array[k]=array[k]+48;
       else
         array[k]=array[k]+55;
+      Serial.write(array[k]);
   }
+
   return (array);
 }
 
@@ -61,8 +66,22 @@ bool EEPROM_erase(unsigned int adress){
 }
 
 uint8_t EEPROM_dump(){
-  for (int i=0; i<EEPROM.length();i++)
-    for (int k=0)
+  int adress_digits[4];
+  for (int i=0; i<EEPROM.length();i=i+8){
+    adress_digits[0]=i/1000;
+    adress_digits[1]=(i/100)%10;
+    adress_digits[2]=(i%100)/10;
+    adress_digits[3]=i%10;
+    for (int k=0;k!=4;k++){
+      Serial.write((adress_digits[k]+48));
+    }
+    Serial.write(" : ");
+    for (int k=i;k<(i+8);k++){
+    digit_to_chars(EEPROM.read(k));
+      Serial.write(" ");
+    }
+    Serial.write(0x0A);
+  }
 }
 
 void Report(bool function){
@@ -99,8 +118,7 @@ void loop() {
               break;
               case 'r':
                   part=EEPROM.read(getAdress(buffer,command.length()));
-                  for (int i=0; i<2;i++)
-                    Serial.write(digit_to_chars(part)[i]);
+                  digit_to_chars(part);
                   Serial.write(success);
               break;
               case 'e':
