@@ -5,35 +5,23 @@
 String command;
 int part;
 int position;
+char array[2]={0,0};
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
 }
 
-char* dec_to_hex(char* dec){
-  char result[sizeof(dec)];
-  for (int k=0;k<sizeof(dec);k++){
-      if (dec[k]<10)
-        dec[k]=dec[k]+48;
-      else
-        dec[k]=dec[k]+55;
-  }
-  return dec;
-}
 
 char* digit_to_chars(int value){
-  char array[2]={0,0};
-  int i=0;
-  while (value!=0)
-  {
-    array[i]=value%16;
-    value=value/16;
-    ++i;
+  array[1]=value%16;
+  array[0]=value/16;
+  for (int k=0;k<2;k++){
+      if (array[k]<10)
+        array[k]=array[k]+48;
+      else
+        array[k]=array[k]+55;
   }
-  char buf=array[0];
-  array[0]=array[1];
-  array[1]=buf;
-  return (dec_to_hex(array));
+  return (array);
 }
 
 uint16_t getValue(byte* array, unsigned int com_length, uint8_t pos){
@@ -73,7 +61,8 @@ bool EEPROM_erase(unsigned int adress){
 }
 
 uint8_t EEPROM_dump(){
-
+  for (int i=0; i<EEPROM.length();i++)
+    for (int k=0)
 }
 
 void Report(bool function){
@@ -112,12 +101,14 @@ void loop() {
                   part=EEPROM.read(getAdress(buffer,command.length()));
                   for (int i=0; i<2;i++)
                     Serial.write(digit_to_chars(part)[i]);
+                  Serial.write(success);
               break;
               case 'e':
                 Report(EEPROM_erase(getAdress(buffer,command.length())));
               break;
               case 'd':
                 EEPROM_dump();
+                Serial.write(success);
               break;
               default:
                 Serial.write("invalid command");
