@@ -2,12 +2,30 @@
 #define success "Оperation successfull. "
 #define failed "Operation failed. "
 
-String command;
+String command=" ";
 int part;
-int position;
+int position=6;
+int value=0xFFFF;
+int adress=0xFFFF;
+char operation;
 char array[2]={0,0};
 void setup() {
   Serial.begin(9600);
+}
+
+//eeprom -w -a 33 -v 45
+//eeprom -v 55 -a 44 -r
+
+unsigned int find_smth(unsigned int starting_pos ){
+  for (unsigned int i=starting_pos;i<command.length();i++){
+    if (command.charAt(i)!=' '){
+      if (command.charAt(i)=='-')
+        position=i+1;
+      else
+        position=i;
+      return i;
+    }
+  }
 }
 
 void digit_to_chars(int value){
@@ -23,14 +41,81 @@ void digit_to_chars(int value){
   Serial.write(" ");
 }
 
-uint16_t getValue(byte* array, unsigned int com_length, uint8_t pos){
-  uint16_t value=0;
-  for (int i=pos;((array[i]>47) && (array[i]<58));i++)
+bool getValue(byte* array, unsigned int com_length, uint8_t pos,char type){
+  uint16_t val=0;
+  for (int i=pos;((array[i]>47) && (array[i]<58) && (i<(com_length)));i++)
     value=value*10+(array[i]-48);
-  return value;
+  if (type=='a'){
+    if(value>0x3FF){
+      Serial.write(failed);
+      Serial.write("Adress is too high");
+      return false;
+    }
+    else
+      adress=val;
+  }
+  if (type=='v'){
+      if(value>255){
+      Serial.write(failed);
+      Serial.write("Value is too high");
+      return false;
+    }
+    else
+      value=val;
+  }
+  return true;
 }
 
-uint16_t getAdress(byte* array, unsigned int com_length){
+void Check_char(byte* buffer){
+  switch(command.charAt(position)) {        
+    case 'w':
+        for(int i=0;(adress=0xFFFF || value==0xFFFF) || i!=10;i++){
+          find_smth(position);
+          Check_char(buffer);
+        }
+        if((adress<EEPROM.length()) && value)
+          EEPROM.write(adress,value);
+        if (EEPROM.read(adress)==value)
+          Serial.write(success);
+        else {
+          Serial.write(failed);
+          Serial.write("EEPROM cell erased. ");
+        }
+        break;
+        case 'r':
+          find_smth(position+1);
+          for(int i=0;adress=0xFFFF || i!=10;i++){
+            find_smth(position);
+            Check_char(buffer);
+          }
+          part=EEPROM.read(adress);
+          digit_to_chars(part);
+          Serial.write(success);
+        break;
+        case 'e':
+          Report(EEPROM_erase(adress));
+        break;
+        case 'd':
+          EEPROM_dump();
+          Serial.write(success);
+        break;
+        case 'v':
+          find_smth(position);
+          value=getValue(buffer,command.length(),position,'v');
+        break;
+        case 'a':
+          find_smth(position);
+          adress=getValue(buffer,command.length(),position,'a');
+        break;
+        default:
+          Serial.write("invalid command - no such key ");
+          Serial.write(0x0A);
+        break;
+    }
+
+}
+
+/*uint16_t getAdress(byte* array, unsigned int com_length){
   int adress;
   uint8_t below_digits=47, above_digits=58,zero=48;
   if (com_length>14 && ((array[14]>below_digits) && (array[14]<above_digits))){
@@ -48,7 +133,7 @@ uint16_t getAdress(byte* array, unsigned int com_length){
     Serial.write("Adress is too high");
   }
   return adress;
-}
+}*/
 
 bool EEPROM_erase(unsigned int adress){
   bool status=true;
@@ -88,37 +173,14 @@ void loop() {
       command=Serial.readString();
       byte buffer[command.length()];
       command.getBytes(buffer, command.length());
-      if ((command.startsWith("eeprom -")) && ((command.charAt(10)=='-' && command.charAt(11)=='a') || command.charAt(8)=='d')){
-           switch(command.charAt(8)) {        
-              case 'w':
-                for (int i=13;!(command.charAt(i)=='-' && command.charAt(i+1)=='v' && command.charAt(i+2)==' ');i++)
-                  position=i+4;
-                EEPROM.write(getAdress(buffer,command.length()), getValue(buffer,command.length(),position));
-                if (EEPROM.read(getAdress(buffer,command.length()))==getValue(buffer,command.length(),position))
-                  Serial.write(success);
-                else {
-                    Serial.write(failed);
-                    Serial.write("EEPROM cell erased. ");
-                }
-              break;
-              case 'r':
-                  part=EEPROM.read(getAdress(buffer,command.length()));
-                  digit_to_chars(part);
-                  Serial.write(success);
-              break;
-              case 'e':
-                Report(EEPROM_erase(getAdress(buffer,command.length())));
-              break;
-              case 'd':
-                EEPROM_dump();
-                Serial.write(success);
-              break;
-              default:
-                Serial.write("invalid command");
-              break;
-           }
+      if (command.startsWith("eeprom ")){
+        find_smth(position);
+        Check_char(buffer);
       }
       else
         Serial.print("invalid command");
+      adress=0xFFFF;
+      value=0xFFFF;
+      position=6;
   }
 }
