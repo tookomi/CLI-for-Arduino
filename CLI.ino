@@ -8,6 +8,7 @@ int position=6;
 int value=0xFFFF;
 int adress=0xFFFF;
 char operation;
+bool type_defined;
 char array[2]={0,0};
 void setup() {
   Serial.begin(9600);
@@ -17,12 +18,17 @@ void setup() {
 //eeprom -v 55 -a 44 -r
 
 unsigned int find_smth(unsigned int starting_pos ){
-  for (unsigned int i=starting_pos;i<command.length();i++){
+  for (unsigned int i=starting_pos;((i+1)<(command.length()-1) && command.charAt(i)!=' ');i++){
+    position=i+1;
+  }
+  for (unsigned int i=position;i<(command.length()-1);i++){
     if (command.charAt(i)!=' '){
-      if (command.charAt(i)=='-')
+      if (command.charAt(i)=='-'){
         position=i+1;
-      else
+      }
+      else{
         position=i;
+      }
       return i;
     }
   }
@@ -41,37 +47,39 @@ void digit_to_chars(int value){
   Serial.write(" ");
 }
 
-bool getValue(byte* array, unsigned int com_length, uint8_t pos,char type){
+int getValue(byte* array, unsigned int com_length, uint8_t pos,char type){
   uint16_t val=0;
-  for (int i=pos;((array[i]>47) && (array[i]<58) && (i<(com_length)));i++)
-    value=value*10+(array[i]-48);
+  for (int i=pos;((array[i]>47) && (array[i]<58) && (i<(com_length-1)));i++){
+    val=val*10+(array[i]-48);
+  }
   if (type=='a'){
-    if(value>0x3FF){
+    if(val>0x3FF){
       Serial.write(failed);
       Serial.write("Adress is too high");
       return false;
     }
     else
-      adress=val;
+        return val;
   }
   if (type=='v'){
-      if(value>255){
+      if(val>255){
       Serial.write(failed);
       Serial.write("Value is too high");
-      return false;
+      return 0xFFFF;
     }
     else
-      value=val;
+      return val;
   }
-  return true;
 }
 
 void Check_char(byte* buffer){
   switch(command.charAt(position)) {        
     case 'w':
-        for(int i=0;(adress=0xFFFF || value==0xFFFF) || i!=10;i++){
+        type_defined=true;
+        for(int i=0;(adress==0xFFFF || value==0xFFFF) && i!=5;i++){
           find_smth(position);
-          Check_char(buffer);
+          if (command.charAt(position-1)=='-')
+            Check_char(buffer);
         }
         if((adress<EEPROM.length()) && value)
           EEPROM.write(adress,value);
@@ -83,10 +91,13 @@ void Check_char(byte* buffer){
         }
         break;
         case 'r':
-          find_smth(position+1);
-          for(int i=0;adress=0xFFFF || i!=10;i++){
+          type_defined=true;
+          for(int i=0;(adress==0xFFFF && i!=5);i++){
+            //Serial.write(adress);
+            //Serial.write(10);
             find_smth(position);
-            Check_char(buffer);
+            if (command.charAt(position-1)=='-')
+              Check_char(buffer);
           }
           part=EEPROM.read(adress);
           digit_to_chars(part);
@@ -106,34 +117,17 @@ void Check_char(byte* buffer){
         case 'a':
           find_smth(position);
           adress=getValue(buffer,command.length(),position,'a');
+          //Serial.write(adress);
+          //Serial.write(10);
         break;
         default:
           Serial.write("invalid command - no such key ");
+          //Serial.write(command.charAt(position));
           Serial.write(0x0A);
         break;
     }
 
 }
-
-/*uint16_t getAdress(byte* array, unsigned int com_length){
-  int adress;
-  uint8_t below_digits=47, above_digits=58,zero=48;
-  if (com_length>14 && ((array[14]>below_digits) && (array[14]<above_digits))){
-    adress=(array[13]-zero)*10+(array[14]-zero);
-    if (com_length>15 && ((array[15]>below_digits) && (array[15]<above_digits))){
-      adress=adress*10+(array[15]-zero);
-      if (com_length>16 && ((array[16]>below_digits) && (array[16]<above_digits)))
-        adress=adress*10+(array[16]-zero);
-    }
-  }
-    else
-      adress=(array[13]-zero);
-  if(adress>0x3FF){
-    Serial.write(failed);
-    Serial.write("Adress is too high");
-  }
-  return adress;
-}*/
 
 bool EEPROM_erase(unsigned int adress){
   bool status=true;
@@ -174,13 +168,16 @@ void loop() {
       byte buffer[command.length()];
       command.getBytes(buffer, command.length());
       if (command.startsWith("eeprom ")){
-        find_smth(position);
-        Check_char(buffer);
+        while(!type_defined){
+          find_smth(position);
+          Check_char(buffer);
+        }
       }
       else
         Serial.print("invalid command");
       adress=0xFFFF;
       value=0xFFFF;
       position=6;
+      type_defined=false;
   }
 }
